@@ -1,11 +1,13 @@
-import sys,os,json,random,base64
-import urllib.request
+import os,json,random,base64
+from urllib.request import urlopen,Request
 VM=[0,82,337,365,477,1025,0]
 VE=[0,94,281,297,512,936,0]
 PH=[0,0,1,1,2,4,0]
-def _T(s): return [x-64 for x in base64.b64decode(s)]
-PM=[[0]*64,[0]*64,_T('LDY2NjY2Niw2QEBAQEBANjZARUpKRUA2NkVFSkpFRTY2QEpKSkpANjZKSkpKSko2NkVAQEBARTYsNjY2NjY2LA=='),_T('QEBAQEBAQEBFSkpKSkpKRTtAQEBAQEA7O0BAQEBAQDs7QEBAQEBAOztAQEBAQEA7O0BAQEBAQDtAQEBFRUBAQA=='),[0]*64,_T('IhgYDg4YGCIiGBgODhgYIiIYGA4OGBgiIhgYDg4YGCIsIiIYGCIiLDYsLCwsLCw2VFRAQEBAVFRUXkpAQEpeVA==')]
-PE=[_T('QEBAQEBAQEBycnJycnJycllZXmNjXllZSkpPWVlPSkpFRUpPT0pFRUBAQEVFQEBAQEBAQEBAQEBAQEBAQEBAQEA='),[0]*64,_T('NjY2NjY2NjY2QEBAQEBANjZARUVFRUA2NkBFSkpFQDY2QEVKSkVANjZARUVFRUA2NkBAQEBAQDY2NjY2NjY2Ng=='),_T('QEBAQEBAQEBFSkpKSkpKRUBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBFRUBAQA=='),[0]*64,_T('DhgiLCwiGA4iLDZAQDYsIiI2VF5eVDYiIjZeaGheNiIiNl5oaF42IiI2VF5eVDYiIiJAQEBAIiIOIiIiIiIiDg==')]
+def _H(s):
+ t=[x-64 for x in base64.b64decode(s)];return [t[(j>>3)*4+min(j&7,7-(j&7))] for j in range(64)]
+Z=[0]*64
+PM=[Z,Z,_H('LDY2NjZAQEA2QEVKNkVFSjZASko2SkpKNkVAQCw2NjY='),Z,Z,_H('IhgYDiIYGA4iGBgOIhgYDiwiIhg2LCwsVFRAQFReSkA=')]
+PE=[_H('QEBAQHJycnJZWV5jSkpPWUVFSk9AQEBFQEBAQEBAQEA='),Z,Z,Z,Z,_H('DhgiLCIsNkAiNlReIjZeaCI2XmgiNlReIiJAQA4iIiI=')]
 ND=[17,15,-15,-17]
 RD=[16,1,-16,-1]
 KD=RD+ND
@@ -52,24 +54,14 @@ def fen(F):
  s=0 if len(P)<2 or P[1]=='w' else 1
  if s: zk^=ZSD
  cs=0
- if len(P)>2:
-  c=P[2]
-  if 'K' in c: cs|=1
-  if 'Q' in c: cs|=2
-  if 'k' in c: cs|=4
-  if 'q' in c: cs|=8
+ if len(P)>2: cs=sum(1<<i for i,ch in enumerate('KQkq') if ch in P[2])
  zk^=ZCT[cs];ep=-1
  if len(P)>3 and P[3]!='-':
   e=P[3];ep=(int(e[1])-1)*16+(ord(e[0])-97);zk^=ZEP[ep]
 def atk(q,by):
- if by==0:
-  for d in (-15,-17):
-   t=q+d
-   if not t&0x88 and b[t]==1: return True
- else:
-  for d in (15,17):
-   t=q+d
-   if not t&0x88 and b[t]==9: return True
+ for d in ((-15,-17) if by==0 else (15,17)):
+  t=q+d
+  if not t&0x88 and b[t]==1+by*8: return True
  n=2+by*8
  for d in NL:
   t=q+d
@@ -135,12 +127,8 @@ def gm(cap=False):
      if not cap: ms.append(q|(to<<7))
     elif (w<8)!=(c==0): ms.append(q|(to<<7))
    if t==6 and not cap:
-    if c==0 and q==4:
-     if cs&1 and not b[5] and not b[6] and b[7]==4 and not atk(4,1) and not atk(5,1) and not atk(6,1): ms.append(4|(6<<7)|CF)
-     if cs&2 and not b[3] and not b[2] and not b[1] and b[0]==4 and not atk(4,1) and not atk(3,1) and not atk(2,1): ms.append(4|(2<<7)|CF)
-    if c==1 and q==116:
-     if cs&4 and not b[117] and not b[118] and b[119]==12 and not atk(116,0) and not atk(117,0) and not atk(118,0): ms.append(116|(118<<7)|CF)
-     if cs&8 and not b[115] and not b[114] and not b[113] and b[112]==12 and not atk(116,0) and not atk(115,0) and not atk(114,0): ms.append(116|(114<<7)|CF)
+    for bit,rt,em,at,tg in (((1,7,(5,6),(4,5,6),6),(2,0,(1,2,3),(4,3,2),2)) if c==0 else ((4,119,(117,118),(116,117,118),118),(8,112,(113,114,115),(116,115,114),114))):
+     if q==(4 if c==0 else 116) and cs&bit and b[rt]==(4 if c==0 else 12) and not any(b[x] for x in em) and not any(atk(x,1-c) for x in at): ms.append(q|(tg<<7)|CF)
   else:
    dirs=ND if t==3 else (RD if t==4 else KD)
    for d in dirs:
@@ -197,21 +185,28 @@ def pev():
  if v is not None: return v
  wp=[q for q in SQ if b[q]==1];bp=[q for q in SQ if b[q]==9]
  mg=0;eg=0
- for q in wp:
-  f=q&7;r=q>>4
-  ps=all(b[b2]!=9 or (b2&7)<f-1 or (b2&7)>f+1 or (b2>>4)<=r for b2 in bp)
-  if ps: mg+=PA[r];eg+=PB[r]
- for q in bp:
-  f=q&7;r=q>>4
-  ps=all(b[b2]!=1 or (b2&7)<f-1 or (b2&7)>f+1 or (b2>>4)>=r for b2 in wp)
-  if ps: mg-=PA[7-r];eg-=PB[7-r]
+ for own,opp,pc,sg in ((wp,bp,9,1),(bp,wp,1,-1)):
+  for q in own:
+   f=q&7;r=q>>4;rr=r if sg>0 else 7-r
+   if all(b[b2]!=pc or (b2&7)<f-1 or (b2&7)>f+1 or ((b2>>4)<=r if sg>0 else (b2>>4)>=r) for b2 in opp): mg+=sg*PA[rr];eg+=sg*PB[rr]
  PC[pk]=(mg,eg)
  return (mg,eg)
+def rp(em): return -260 if em>110 else (140 if em<-110 else 0)
+tt={};KL={}
+LK=set()
+nd=[0];ST=[False]
+BG=70000
+def osc(m,ttm,ply):
+ if m==ttm: return 1<<28
+ to=(m>>7)&127;vic=b[to];pt=(m>>14)&7
+ if vic or pt or (m&EF): return (1<<24)+((pt*16 if pt else 0)+SV[vic%8])*32-SV[b[m&127]%8]
+ k=KL.get(ply)
+ if k:
+  if m==k[0]: return (1<<23)+2
+  if len(k)>1 and m==k[1]: return (1<<23)+1
+ return 0
 def ev():
  pm,pe2=pev();mg=sm+pm;eg=se+pe2
- pf=[0,0]
- for q in SQ:
-  if b[q]%8==1: pf[0 if b[q]<8 else 1]|=1<<(q&7)
  for q in SQ:
   p=b[q]
   if not p: continue
@@ -230,24 +225,11 @@ def ev():
      to+=d
    w_=((5,4) if t==3 else ((3,2) if t==4 else (1,1)))
    mg+=(cnt*w_[0] if c==0 else -cnt*w_[0]);eg+=(cnt*w_[1] if c==0 else -cnt*w_[1])
-  if t==4:
-   f=q&7
-   if not (pf[c]>>f)&1: mg+=(14 if c==0 else -14)
-   elif not (pf[1-c]>>f)&1: mg+=(7 if c==0 else -7)
  sc=(mg*ph+eg*(24-ph))//24
  return sc if s==0 else -sc
-tt={}
-LK=set()
-nd=[0];ST=[False]
-BG=70000
-def osc(m,ttm,ply):
- if m==ttm: return 1<<28
- to=(m>>7)&127;vic=b[to];pt=(m>>14)&7
- if vic or pt or (m&EF): return (1<<24)+((pt*16 if pt else 0)+SV[vic%8])*32-SV[b[m&127]%8]
- return 0
 def evq():
- pm,pe2=pev()
- sc=((sm+pm)*ph+(se+pe2)*(24-ph))//24
+ pm,pe2=pev();mg=sm+pm;eg=se+pe2
+ sc=(mg*ph+eg*(24-ph))//24
  return sc if s==0 else -sc
 def qs(a,be,ply):
  nd[0]+=1
@@ -293,17 +275,22 @@ def sr(dep,a,be,ply):
  a0=a;best=-IF;bm=0;i=0;lc=0
  for m in ms:
   gchk=False
+  cp0=b[(m>>7)&127]
   mk(m)
   if atk(kq[1-s],s): um();continue
   if zk in LK:
-   em=-ev();v=-260 if em>110 else (140 if em<-110 else 0)
+   v=rp(-ev())
   else:
    if not chk: gchk=ich(s)
    LK.add(zk)
-   if i==0: v=-sr(dep-1+gchk,-be,-a,ply+1)
+   rd=dep-1+gchk
+   if i>=3 and dep>=3 and not chk and not gchk and not cp0 and not (m>>14)&7 and not m&EF: rd-=1
+   if i==0: v=-sr(rd,-be,-a,ply+1)
    else:
-    v=-sr(dep-1+gchk,-a-1,-a,ply+1)
-    if v>a and v<be: v=-sr(dep-1+gchk,-be,-a,ply+1)
+    v=-sr(rd,-a-1,-a,ply+1)
+    if v>a:
+     if rd<dep-1+gchk: v=-sr(dep-1+gchk,-a-1,-a,ply+1)
+     if v>a and v<be: v=-sr(dep-1+gchk,-be,-a,ply+1)
    LK.discard(zk)
   um()
   if ST[0]: return best if best>-IF else ev()
@@ -312,7 +299,12 @@ def sr(dep,a,be,ply):
    best=v;bm=m
    if v>a:
     a=v
-   if a>=be: break
+   if a>=be:
+    if not b[(m>>7)&127] and not (m>>14)&7 and not m&EF:
+     kk=KL.setdefault(ply,[])
+     if m in kk: kk.remove(m)
+     kk.insert(0,m);del kk[2:]
+    break
   i+=1
  if lc==0: return -MA+ply if chk else 0
  fl=0 if a0<best<be else (2 if best<=a0 else 1)
@@ -332,7 +324,7 @@ def root():
    mk(m)
    if atk(kq[1-s],s): um();continue
    if zk in LK:
-    em=-ev();v=-260 if em>110 else (140 if em<-110 else 0)
+    v=rp(-ev())
    else:
     LK.add(zk)
     if i==0: v=-sr(dep-1,-IF,-a,1)
@@ -360,9 +352,9 @@ def fm(u):
 URL=os.environ.get('MAKEFUN_ENV_URL','')
 def po(path,body):
  data=json.dumps(body).encode()
- rq=urllib.request.Request(URL+path,data=data,headers={'Content-Type':'application/json'})
+ rq=Request(URL+path,data=data,headers={'Content-Type':'application/json'})
  try:
-  with urllib.request.urlopen(rq,timeout=30) as r: return json.loads(r.read().decode())
+  with urlopen(rq,timeout=30) as r: return json.loads(r.read().decode())
  except Exception: return {}
 def su(st):
  global RP

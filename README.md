@@ -2,7 +2,7 @@
 
 A compact Python chess engine built for the make.fun **tiny-chess-01** contest
 (program/v1 protocol). The whole engine ships as a single self-extracting
-`main.py` of **4,074 bytes** (limit: 4,096), produced by the official kit's
+`main.py` of **4,096 bytes** (limit: 4,096), produced by the official kit's
 `compress` command from the source in `src/engine2.py`.
 
 ## Design
